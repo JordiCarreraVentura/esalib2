@@ -37,7 +37,7 @@ def binarize(lst):
     res = []
     for item in lst:
         res.append(struct.pack('if', *item))
-    return "".join(res)
+    return b"".join(res)
 
 
 def sliding_window_filter(doc_list, window_size=100, window_thresh=0.05):
@@ -187,13 +187,14 @@ class WikidumpStreamDI(DocumentIterator):
 
             if ev == "end" and el.tag.endswith('page'):
                 try:
-                    doc_id = next(el.iterfind('{http://www.mediawiki.org/xml/export-0.8/}id')).text
-                    title = next(el.iterfind('{http://www.mediawiki.org/xml/export-0.8/}title')).text
-                    content = next(el.iterfind('{http://www.mediawiki.org/xml/export-0.8/}revision/{http://www.mediawiki.org/xml/export-0.8/}text')).text
+                    doc_id = next(el.iterfind('{http://www.mediawiki.org/xml/export-0.10/}id')).text
+                    title = next(el.iterfind('{http://www.mediawiki.org/xml/export-0.10/}title')).text
+                    content = next(el.iterfind('{http://www.mediawiki.org/xml/export-0.10/}revision/{http://www.mediawiki.org/xml/export-0.10/}text')).text
                     content = self._clean_doc(content)
+#                     print(title, len(content))
                     yield Document(doc_id=doc_id, title=title, content=content)
-                except Exception, e:
-                    print "Error processing document", str(e)
+                except Exception as e:
+                    print("Error processing document", str(e))
 
                 root.clear()  # throw away the data from the parsed tree, as they are processed
 
@@ -222,7 +223,7 @@ class WordMap(dict):
 
     def save(self, conn):
         save_curr = conn.cursor()
-        for word, word_id in self.iteritems():
+        for word, word_id in self.items():
             save_curr.execute("INSERT INTO term_wordmap VALUES (?, ?)",
                 (word, word_id))
 
@@ -297,7 +298,8 @@ class BackgroundBuilder(object):
         """Insert the term along with its document vector to the database."""
         doc_list = sliding_window_filter(term.doc_list)  # be
         curr.execute("INSERT INTO term VALUES(?, ?)",
-            (term.term_id, buffer(binarize(doc_list))))
+            #(term.term_id, buffer(binarize(doc_list))))
+            (term.term_id, binarize(doc_list)))
 
     def save_terms(self, term_idf, min_freq=15):
         curr = self.conn.cursor()
@@ -393,7 +395,7 @@ class ESA(object):
         used_dims = set()
         used_tvs = []
         for token in self.tokenize(text):
-            new_tv = self.esa_index[token]
+            new_tv = self.esa_index.get(token, dict([]))
             used_dims.update(new_tv.keys())
             used_tvs.append(new_tv)
 
@@ -404,7 +406,7 @@ class ESA(object):
         return res_vec
 
     def similarity(self, v1, v2):
-        dims = set(v1.keys() + v2.keys())
+        dims = set(list(v1.keys()) + list(v2.keys()))
         res = 0.0
         res_norm_v1 = 0.0
         res_norm_v2 = 0.0
@@ -416,7 +418,10 @@ class ESA(object):
             res_norm_v1 += v1_val ** 2
             res_norm_v2 += v2_val ** 2
 
-        return res / math.sqrt(res_norm_v1 * res_norm_v2)
+        if res_norm_v1 and res_norm_v2:
+            return res / math.sqrt(res_norm_v1 * res_norm_v2)
+        else:
+            return 0.0
 
 
 def get_token_filter_chain():
@@ -442,7 +447,7 @@ def test_esa():
     for w1, w2 in test_lst:
         v1 = esa.get_vector(w1)
         v2 = esa.get_vector(w2)
-        print w1, w2, esa.similarity(v1, v2)
+        print(w1, w2, esa.similarity(v1, v2))
 
 
 def test_build_background():    

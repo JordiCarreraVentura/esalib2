@@ -51,11 +51,13 @@ Each file contains several documents in the format:
         </doc>
 """
 
-import Queue, threading, argparse, shutil, json
+import threading, argparse, shutil, json
 import sys, re, bz2, multiprocessing
 import os.path, os, string, random, traceback
-from htmlentitydefs import name2codepoint
+from html.entities import name2codepoint
 #from lxml import etree
+
+from queue import Queue
 
 # compatible with the original work from the TANL project
 # see http://medialab.di.unipi.it/wiki/Tanl for more info
@@ -100,7 +102,7 @@ class WikiCleanerThread(threading.Thread):
         if not self._outfile:
             self._outfile = self._get_file(self._outputdir, self._compress)
 
-        print "[%s] [%s]" % (wiki_id.encode('utf-8'), wiki_title.encode('utf-8'))
+        print("[%s] [%s]" % (wiki_id.encode('utf-8'), wiki_title.encode('utf-8')))
 
         url = self._geturl(wiki_id)
 
@@ -151,7 +153,7 @@ class WikiCleanerThread(threading.Thread):
                     page_elem.clear()
                     self._queue.task_done()
 
-        print "%s done" % self.name
+        print("%s done" % self.name)
 
 ##
 # Whether to preseve links in output
@@ -578,7 +580,7 @@ def process_data(inputdump, outputdir, maxfilesize, compress, outformat):
         if event == "end" and elem.tag.endswith("base"):
             prefix =  elem.text[:elem.text.rfind("/")]
             break
-    print "base url: %s" % prefix
+    print("base url: %s" % prefix)
 
     # initialize wiki page queue
     queue = Queue.Queue(maxsize=100)
@@ -602,7 +604,7 @@ def process_data(inputdump, outputdir, maxfilesize, compress, outformat):
     for w in workers:
         w.join()
 
-    print "finished"
+    print("finished")
 
 def main():
     global keepLinks, keepSections
@@ -636,9 +638,9 @@ def main():
             file_size = int(args.bytes)
         if file_size < min_file_size: raise ValueError()
     except ValueError:
-        print >> sys.stderr, \
-        'Insufficient or invalid bytes size (minimum per output is %d bytes)' \
-        % min_file_size
+        # print >> sys.stderr, \
+#         'Insufficient or invalid bytes size (minimum per output is %d bytes)' \
+#         % min_file_size
         return
 
     if not os.path.exists(args.outputdir):
