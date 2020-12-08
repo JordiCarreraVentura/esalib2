@@ -445,15 +445,7 @@ def test_esa():
         print w1, w2, esa.similarity(v1, v2)
 
 
-def test_build_background():    
-    parser = argparse.ArgumentParser()
-    parser.add_argument("wikidump", help="XML wiki dump file")
-    parser.add_argument('-l', '--limit', required=True, type=int, default=10000)
-    parser.add_argument(
-        '-b', '--build', action='store_true', default=False
-    )
-    parser.add_argument('-d', '--database', type=str, default='esa_bg.db')
-    args = parser.parse_args()
+def test_build_background(args):
     
     wsdi = WikidumpStreamDI(args.wikidump, limit=args.limit)
 
@@ -469,5 +461,15 @@ def test_build_background():
 
 
 if __name__ == '__main__':
-    test_build_background()
-    test_esa()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("wikidump", help="XML wiki dump file")
+    parser.add_argument('-l', '--limit', required=True, type=int, default=10000)
+    parser.add_argument(
+        '-b', '--build', action='store_true', default=False
+    )
+    parser.add_argument('-d', '--database', type=str, default='esa_bg.db')
+    args = parser.parse_args()
+
+    test_build_background(args)
+    test_esa(args)
