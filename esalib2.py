@@ -13,19 +13,20 @@
 """
 
 import argparse
-import os
 import bz2
-import time
-from collections import Counter
+import datetime
+import math
+import os
+import re
+import pickle
+import porter
 import sqlite3
 import struct
-import math
-import datetime
-import re
-
-import xml.etree.cElementTree as ET
+import time
 import wiki_extractor
-import porter
+import xml.etree.cElementTree as ET
+
+from collections import Counter
 
 # run pdb when error occurs
 import pdberr
