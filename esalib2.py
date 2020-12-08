@@ -12,6 +12,7 @@
     :license: Apache License Version 2.0, January 2004 http://www.apache.org/licenses
 """
 
+import argparse
 import os
 import bz2
 import time
@@ -444,8 +445,13 @@ def test_esa():
         print w1, w2, esa.similarity(v1, v2)
 
 
-def test_build_background():
-    wsdi = WikidumpStreamDI('/xdisk/devel/esalib/enwiki-20130403-pages-articles.xml.bz2', limit=10000)
+def test_build_background():    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("wikidump", help="XML wiki dump file")
+    parser.add_argument('-l', '--limit', required=True, type=int, default=10000)
+    args = parser.parse_args()
+    
+    wsdi = WikidumpStreamDI(args.wikidump, limit=args.limit)
 
     bb = BackgroundBuilder("esa_bg.db", token_filter_chain=get_token_filter_chain())
     bb.build(wsdi,
