@@ -210,15 +210,13 @@ class WordMap(dict):
             idf = math.log(doc_cnt / term_cnt)
             save_curr.execute("INSERT INTO term_idf VALUES (?, ?)", (term_id, idf,) )
             res[term_id] = idf
-
         return res
 
     def load_idf(self, conn):
         curr = conn.cursor()
         term_idf = {}
-        for term_id, idf in curr.execute("SELECT term_id, term_idf FROM term_idf;"):
+        for term_id, idf in curr.execute("SELECT term_id, idf FROM term_idf;"):
             term_idf[term_id] = idf
-
         return term_idf
 
     def save(self, conn):
