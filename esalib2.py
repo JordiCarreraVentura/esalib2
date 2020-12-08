@@ -33,6 +33,17 @@ import pdberr
 pdberr.init()
 
 
+
+def from_pickle(path):
+    with open(path, 'rb') as rd:
+        return pickle.load(rd)
+
+
+def to_pickle(data, path):
+    with open(path, 'wb') as wrt:
+        pickle.dump(data, wrt)
+
+
 def binarize(lst):
     """Convert a list of (int, float) tuples into a binary string."""
     res = []
