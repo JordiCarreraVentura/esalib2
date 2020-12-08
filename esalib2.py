@@ -252,11 +252,11 @@ class BackgroundBuilder(object):
         "CREATE TABLE term_wordmap (term text, term_id int)",
     ]
 
-    def __init__(self, db_file, token_filter_chain):
+    def __init__(self, db_file, token_filter_chain, build=False):
         self.wordmap = WordMap()
         self.tokenizer = WhitespaceTokenizer()
         self.token_filter_chain = token_filter_chain
-
+        self._build = build
         self.db_file = db_file
         self.conn = None
         self._connect_to_db()
@@ -343,8 +343,8 @@ class BackgroundBuilder(object):
         self.create_index("doc_term_freq", curr)
         curr.close()
 
-    def build(self, doc_iter, skip_load=False, min_freq=15):
-        if not skip_load:
+    def build(self, doc_iter, min_freq=5):
+        if self._build:
             self.prepare_database()
             self.load_documents(doc_iter)
             self.conn.commit()
@@ -451,13 +451,21 @@ def test_build_background():
     parser = argparse.ArgumentParser()
     parser.add_argument("wikidump", help="XML wiki dump file")
     parser.add_argument('-l', '--limit', required=True, type=int, default=10000)
+    parser.add_argument(
+        '-b', '--build', action='store_true', default=False
+    )
+    parser.add_argument('-d', '--database', type=str, default='esa_bg.db')
     args = parser.parse_args()
     
     wsdi = WikidumpStreamDI(args.wikidump, limit=args.limit)
 
-    bb = BackgroundBuilder("esa_bg.db", token_filter_chain=get_token_filter_chain())
-    bb.build(wsdi,
-        skip_load=False,
+    bb = BackgroundBuilder(
+        args.database,
+        token_filter_chain=get_token_filter_chain(),
+        build=args.build
+    )
+    bb.build(
+        wsdi,
         min_freq=0
     )
 
