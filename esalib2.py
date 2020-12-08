@@ -116,12 +116,12 @@ class ProgressMeasure(object):
     def tick(self):
         self.cntr += 1
         if time.time() - self.last_time > 1.0:
-            print datetime.datetime.now(),
+            print(datetime.datetime.now(),)
             if self.label:
-                print self.label,
+                print(self.label,)
             if self.target is not None:
-                print "(%.4f%%)" % (float(self.cntr) / self.target * 100),
-            print self.cntr
+                print("(%.4f%%)" % (float(self.cntr) / self.target * 100),)
+            print(self.cntr)
 
             self.last_time = time.time()
 
