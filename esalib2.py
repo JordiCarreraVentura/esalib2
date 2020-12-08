@@ -357,10 +357,9 @@ class BackgroundBuilder(object):
             # build idf map
             term_idf = self.wordmap.save_idf(self.conn)
             self.conn.commit()
+            self.save_terms(term_idf, min_freq=min_freq)
         else:
             term_idf = self.wordmap.load_idf(self.conn)
-
-        self.save_terms(term_idf, min_freq=min_freq)
         self.conn.commit()
 
 
