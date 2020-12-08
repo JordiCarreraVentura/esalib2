@@ -264,12 +264,14 @@ class BackgroundBuilder(object):
         "CREATE TABLE term_wordmap (term text, term_id int)",
     ]
 
-    def __init__(self, db_file, token_filter_chain, build=False):
+    def __init__(self, db_file, labels_file, token_filter_chain, build=False):
         self.wordmap = WordMap()
         self.tokenizer = WhitespaceTokenizer()
         self.token_filter_chain = token_filter_chain
         self._build = build
         self.db_file = db_file
+        self.labels_file = labels_file
+        self.label_by_docid = dict([])
         self.conn = None
         self._connect_to_db()
 
@@ -348,12 +350,20 @@ class BackgroundBuilder(object):
 
     def load_documents(self, doc_iter):
         curr = self.conn.cursor()
-        for doc in doc_iter:
+        for i, doc in enumerate(doc_iter):
             content = doc.content
             term_freq = self.compute_termfrequency(content)
             self.save_doc_freq(curr, doc.doc_id, term_freq)
+            self.label_by_docid[doc.doc_id] = doc.title
+            self.__persist_explicit_labels(i)
         self.create_index("doc_term_freq", curr)
         curr.close()
+    
+    def __persist_explicit_labels(self, i, n=50):
+        if i and not i % n:
+            to_pickle(self.label_by_docid, self.labels_file)
+            return True
+        return False
 
     def build(self, doc_iter, min_freq=5):
         if self._build:
@@ -374,8 +384,9 @@ class BackgroundBuilder(object):
 
 
 class ESA(object):
-    def __init__(self, bg_file, token_filter_chain):
+    def __init__(self, bg_file, labels_file, token_filter_chain):
         self.bg_file = bg_file
+        self.labels_file = labels_file
         self.token_filter_chain = token_filter_chain
         self.tokenizer = WhitespaceTokenizer()
 
@@ -384,6 +395,10 @@ class ESA(object):
         self.esa_index = None
         self.stemmer = None
 
+        self.label_by_docid = {
+            int(docid): label
+            for docid, label in from_pickle(self.labels_file).items()
+        }
         self._load()
 
     def _load(self):
@@ -400,7 +415,8 @@ class ESA(object):
         for word in filter_chain(self.tokenizer.tokenize(text), self.token_filter_chain):
             yield word
 
-    def get_vector(self, text):
+
+    def get_vector(self, text, n_labels=5):
         used_dims = set()
         used_tvs = []
         for token in self.tokenize(text):
@@ -409,10 +425,21 @@ class ESA(object):
             used_tvs.append(new_tv)
 
         res_vec = {}
+        explicit_analysis = []
         for dim in used_dims:
-            res_vec[dim] = sum(tv.get(dim, 0.0) for tv in used_tvs)
+            score = sum(tv.get(dim, 0.0) for tv in used_tvs)
+            res_vec[dim] = score
+            if dim in self.label_by_docid:
+                explicit_analysis.append(
+                    (self.label_by_docid[dim], score)
+                )
+        
+        explicit_analysis.sort(reverse=True, key=lambda x: x[1])
+        if n_labels:
+            explicit_analysis = explicit_analysis[:n_labels]
 
-        return res_vec
+        return explicit_analysis, res_vec
+
 
     def similarity(self, v1, v2):
         dims = set(list(v1.keys()) + list(v2.keys()))
@@ -442,8 +469,12 @@ def get_token_filter_chain():
     ]
 
 
-def test_esa():
-    esa = ESA("esa_bg.db", token_filter_chain=get_token_filter_chain())
+def test_esa(args):
+    esa = ESA(
+        args.database,
+        args.explicit,
+        token_filter_chain=get_token_filter_chain()
+    )
     test_lst = [
         ('four', 'western'),
         ('princip', 'protest'),
@@ -454,9 +485,9 @@ def test_esa():
         ('beautiful day', 'bad day'),
     ]
     for w1, w2 in test_lst:
-        v1 = esa.get_vector(w1)
-        v2 = esa.get_vector(w2)
-        print(w1, w2, esa.similarity(v1, v2))
+        labels, v1 = esa.get_vector(w1)
+        labels, v2 = esa.get_vector(w2)
+        print('\n', w1, w2, esa.similarity(v1, v2), labels)
 
 
 def test_build_background(args):
@@ -465,6 +496,7 @@ def test_build_background(args):
 
     bb = BackgroundBuilder(
         args.database,
+        args.explicit,
         token_filter_chain=get_token_filter_chain(),
         build=args.build
     )
@@ -482,7 +514,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '-b', '--build', action='store_true', default=False
     )
-    parser.add_argument('-d', '--database', type=str, default='esa_bg.db')
+    parser.add_argument('--database', type=str, default='esa_bg.db', help='') # TODO: add help
+    parser.add_argument('--explicit', type=str, default='esa_labels.p', help='') # TODO: add help
     args = parser.parse_args()
 
     test_build_background(args)
