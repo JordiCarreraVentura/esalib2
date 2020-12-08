@@ -2,4 +2,15 @@
 bin/*
 lib/*
 pyvenv.cfg
+
+# Python cache
+__pycache__/*
+
+# system documentation
+share/man/man1/ipython.1.gz
+
+# project temporary files
 ToDo.txt
+
+# ESA files
+esa_bg.db
